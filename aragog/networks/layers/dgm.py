@@ -12,9 +12,7 @@ class DGMLayer(tf.keras.layers.Layer):
     ):
         super(DGMLayer, self).__init__(*args, **kwargs)
         self.units = units
-        # The DGM paper uses Xavier Initialization
         self.init_func = init_func
-        # The DGM paper uses a tanh activation function
         self.activation_func = activation_func
 
     def build(self, input_shape):
