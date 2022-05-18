@@ -10,11 +10,7 @@ import os
 import numpy as np
 from aragog.logger import configure_logger
 from aragog.callbacks.timing import TimingCallback
-from aragog.networks.layers.highway import (
-    GenericHighwayLayer,
-    HighwayLayer,
-    ResidualLayer,
-)
+from aragog.networks.layers.dgm import DGMWrapper
 from utils import load_training_datasets, save_model, parse_args
 
 
@@ -25,28 +21,16 @@ def build_model(
     input_shape: int,
     nodes: int,
     layers: int,
-    activation_func=tf.nn.tanh,
-    layer_class: tf.keras.layers.Layer = GenericHighwayLayer,
     loss: tf.keras.losses.Loss = tf.keras.losses.MeanSquaredError(),
     optimizer: tf.keras.optimizers.Optimizer = tf.keras.optimizers.Adam(
         learning_rate=1e-4
     ),
 ) -> tf.keras.Model:
-    layers = (
-        [
-            tf.keras.layers.Input(shape=(input_shape,)),
-            tf.keras.layers.Dense(nodes, activation=activation_func),
-        ]
-        + [
-            layer_class(nodes, activation_func=activation_func)
-            for _ in range(layers)
-        ]
-        + [tf.keras.layers.Dense(1)]
-    )
-
-    model = tf.keras.models.Sequential(layers)
+    inputs = tf.keras.Input(shape=(input_shape,))
+    dgm_wrapper = DGMWrapper(units=nodes, n_layers=layers)
+    outputs = dgm_wrapper(inputs)
+    model = tf.keras.Model(inputs, outputs)
     model.compile(loss=loss, optimizer=optimizer)
-
     return model
 
 
@@ -64,18 +48,7 @@ def train_model(
     )
     os.makedirs(model_save_path, exist_ok=True)
 
-    if name == "generic_hw":
-        layer_class = GenericHighwayLayer
-    elif name == "hw":
-        layer_class = HighwayLayer
-    elif name == "residual":
-        layer_class = ResidualLayer
-    else:
-        raise ValueError(f"Unknown name for layer class: {name}")
-
-    model = build_model(
-        input_shape=4, layers=layers, nodes=nodes, layer_class=layer_class
-    )
+    model = build_model(input_shape=4, layers=layers, nodes=nodes)
     LOGGER.info(model.summary())
 
     timing_cb = TimingCallback(save_path=model_save_path)
@@ -112,7 +85,7 @@ def runner(args):
         y_train_bs,
         args.save_path,
         type="bs",
-        name="generic_hw",
+        name="dgm",
     )
     train_model(
         nodes,
@@ -121,43 +94,7 @@ def runner(args):
         y_train_iv,
         args.save_path,
         type="iv",
-        name="generic_hw",
-    )
-    train_model(
-        nodes,
-        layers,
-        X_train_bs,
-        y_train_bs,
-        args.save_path,
-        type="bs",
-        name="hw",
-    )
-    train_model(
-        nodes,
-        layers,
-        X_train_iv,
-        y_train_iv,
-        args.save_path,
-        type="iv",
-        name="hw",
-    )
-    train_model(
-        nodes,
-        layers,
-        X_train_bs,
-        y_train_bs,
-        args.save_path,
-        type="bs",
-        name="residual",
-    )
-    train_model(
-        nodes,
-        layers,
-        X_train_iv,
-        y_train_iv,
-        args.save_path,
-        type="iv",
-        name="residual",
+        name="dgm",
     )
 
 
