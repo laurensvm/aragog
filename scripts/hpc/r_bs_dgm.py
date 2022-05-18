@@ -10,7 +10,7 @@ import os
 import numpy as np
 from aragog.logger import configure_logger
 from aragog.callbacks.timing import TimingCallback
-from aragog.networks.layers.dgm import DGMWrapper
+from aragog.networks.dgm import DGM
 from utils import load_training_datasets, save_model, parse_args
 
 
@@ -27,7 +27,7 @@ def build_model(
     ),
 ) -> tf.keras.Model:
     inputs = tf.keras.Input(shape=(input_shape,))
-    dgm_wrapper = DGMWrapper(units=nodes, n_layers=layers)
+    dgm_wrapper = DGM(units=nodes, n_layers=layers)
     outputs = dgm_wrapper(inputs)
     model = tf.keras.Model(inputs, outputs)
     model.compile(loss=loss, optimizer=optimizer)
