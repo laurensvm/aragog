@@ -23,7 +23,7 @@ class DGM(tf.keras.layers.Layer):
                 units=units,
                 init_func=self.init_func,
                 activation_func=self.activation_func,
-                # depth=depth,
+                depth=depth,
             )
             for _ in range(n_layers)
         ]
