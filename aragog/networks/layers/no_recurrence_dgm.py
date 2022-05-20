@@ -65,7 +65,7 @@ class NoRecurrenceDGMLayer(DGMLayer):
         self.built = True
 
     def call(self, inputs, *args, **kwargs):
-        x, S = inputs
+        _, S = inputs
 
         # calculate Z
         Z = tf.matmul(S, self.WZ) + self.bZ

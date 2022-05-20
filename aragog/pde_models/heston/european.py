@@ -1,15 +1,22 @@
 import tensorflow as tf
-from aragog.pde_models.black_scholes.black_scholes import BlackScholesPDEModel
+from aragog.pde_models.heston.heston import HestonPDEModel
 
 
-class EuropeanBlackScholesPDEModel(BlackScholesPDEModel):
+class EuropeanHestonPDEModel(HestonPDEModel):
     def train_step(self, data):
-        x_interior, t_interior, x_terminal, t_terminal = data[0]
+        (
+            x_interior,
+            t_interior,
+            v_interior,
+            x_terminal,
+            t_terminal,
+            v_terminal,
+        ) = data[0]
         with tf.GradientTape() as tape:
             # Loss term #1: PDE
             # compute function value and derivatives at current sampled points
             loss_interior = self.compute_interior_loss(
-                t=t_interior, x=x_interior
+                t=t_interior, x=x_interior, v=v_interior
             )
 
             # Loss term #2: boundary condition
@@ -17,7 +24,7 @@ class EuropeanBlackScholesPDEModel(BlackScholesPDEModel):
 
             # Loss term #3: initial/terminal condition
             loss_terminal = self.compute_terminal_loss(
-                t=t_terminal, x=x_terminal
+                t=t_terminal, x=x_terminal, v=v_terminal
             )
 
             loss = loss_interior + loss_terminal

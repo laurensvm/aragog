@@ -166,3 +166,14 @@ def sample_correlations(
         dtype=tf.float32,
     )
     return [correlations]
+
+
+@tf.function
+def sample_variance(
+    batch_size: tf.int32, v_min: tf.float32, v_max: tf.float32
+) -> List[tf.Tensor]:
+    variance = tf.random.uniform(
+        shape=[batch_size, 1], minval=v_min, maxval=v_max, dtype=tf.float32
+    )
+
+    return [variance]
