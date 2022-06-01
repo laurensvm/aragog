@@ -144,11 +144,23 @@ class DGMSpaceTime(tf.keras.layers.Layer):
 
 
 class DGMParametric(DGMSpaceTime):
-    def __init__(self, *args, **kwargs):
-        super(DGMParametric, self).__init__(*args, **kwargs)
-
     def call(self, t, x, params):
         inputs = tf.concat([t, x, params], axis=1)
+
+        S = self.activation_func(tf.matmul(inputs, self.W1) + self.b1)
+        for layer in self.dgm_layers:
+            S = layer((inputs, S))
+
+        y = self.activation_func(tf.matmul(S, self.W) + self.b)
+
+        # Final dense layer
+        y = self.dense_final(y)
+        return y
+
+
+class DGMVarianceProcess(DGMSpaceTime):
+    def call(self, t, x, v):
+        inputs = tf.concat([t, x, v], axis=1)
 
         S = self.activation_func(tf.matmul(inputs, self.W1) + self.b1)
         for layer in self.dgm_layers:

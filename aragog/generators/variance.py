@@ -61,4 +61,4 @@ class HestonSpaceTimeVarianceGenerator(SpaceTimeGenerator):
                 + boundary
                 + variance_boundary
             )
-        return interior + variance + terminal + variance_terminal
+        return [interior + variance + terminal + variance_terminal]

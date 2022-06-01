@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Union
+import numpy as np
 import tensorflow as tf
 from aragog.pde_models.base import PDEModel
 
@@ -8,8 +9,8 @@ class HestonPDEModel(PDEModel):
         self,
         dimension_x: int,
         K: float,
-        correlations: List[float],
-        variance_correlations: List[float],
+        correlations: Union[List[float], np.ndarray],
+        variance_correlations: Union[List[float], np.ndarray],
         riskfree_rate: float,
         reversion_speed: float,
         long_average_variance: float,
@@ -55,13 +56,16 @@ class HestonPDEModel(PDEModel):
             perm=[1, 0, 2],
         )
 
-        u_xv = tf.transpose(
-            tf.map_fn(
-                lambda i: tf.gradients(u_x[:, i], v)[0],
-                elems=tf.range(self.dimension_x),
-                fn_output_signature=tf.float32,
+        u_xv = tf.squeeze(
+            tf.transpose(
+                tf.map_fn(
+                    lambda i: tf.gradients(u_x[:, i], v)[0],
+                    elems=tf.range(self.dimension_x),
+                    fn_output_signature=tf.float32,
+                ),
+                perm=[1, 0, 2],
             )
-        )[0]
+        )
 
         u_vv = tf.gradients(u_v, v)[0]
 
@@ -72,7 +76,7 @@ class HestonPDEModel(PDEModel):
         residual_interior = (
             u_t[:, 0]
             + tf.reduce_sum(self.riskfree_rate * x * u_x, axis=1)
-            - self.reversion_speed
+            + self.reversion_speed
             * (self.long_average_variance - v[:, 0])
             * u_v[:, 0]
             + 0.5
@@ -83,7 +87,8 @@ class HestonPDEModel(PDEModel):
             + self.vol_of_vol
             * v[:, 0]
             * tf.reduce_sum(u_xv * x * self.variance_correlations, axis=1)
-            + 0.5 * tf.square(self.vol_of_vol) * u_vv[:, 0]
+            + 0.5 * tf.square(self.vol_of_vol) * v[:, 0] * u_vv[:, 0]
+            - self.riskfree_rate * u_interior
         )
 
         loss_interior = tf.reduce_mean(tf.square(residual_interior))
