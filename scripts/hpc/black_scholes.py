@@ -1,79 +1,78 @@
 import os
 import logging
 import tensorflow as tf
-from utils import save_model, parse_args
+import numpy as np
 from aragog.logger import configure_logger
+from aragog.generators.space_time import SpaceTimeGenerator
 from aragog.pde_models.black_scholes.european import (
     EuropeanBlackScholesPDEModel,
 )
-from aragog.generators.space_time import SpaceTimeGenerator
-from aragog.networks.factories import create_spacetime_dgm_network
 from aragog.callbacks.timing import TimingCallback
-from aragog.pde_models.payoffs import g_arithmetic
+from aragog.pde_models.payoffs import g_minimum
+from aragog.networks.factories import (
+    # create_spacetime_mlp,
+    # create_spacetime_dgm_network,
+    create_spacetime_highway_network,
+)
 from aragog.schedules.piecewise import build_piecewise_decay_schedule
+from scripts.hpc.utils import save_model, parse_args
 
 LOGGER = logging.getLogger(__name__)
 
 
 def runner(args):
     configure_logger()
-    LOGGER.info(f"Available devices: {tf.config.list_physical_devices('GPU')}")
-    LOGGER.info(f"Model save path: {args.save_path}")
 
-    # CONSTANTS
-    batch_size = 10000
-    dimension_x = 10
-    T = 2.0
-    x_range = [0 + 1e-10, 4]
-    t_range = [0 + 1e-10, T]
-
-    K = 1.0
-    volatilities = tf.fill((dimension_x,), 0.25)
-    correlations = tf.fill((dimension_x, dimension_x), 0.6)
-    correlations = tf.linalg.set_diag(
-        correlations, tf.fill((dimension_x,), 1.0)
-    )
-    riskfree_rate = 0.1
-
-    layers = 3
-    units = 256
-
-    epochs = 5000
+    # Constants
+    units = 75
+    layers = 4
     steps_per_epoch = 20
 
-    name = f"european_bs_{dimension_x}d_{units}n_{layers}l"
+    batch_size = 5000
+    epochs = 1000
+
+    K = 1.0
+    T = 2.0
+    dimension_x = 2
+    t_range = [0 + 1e-10, T]
+    x_range = [0 + 1e-10, 4.0]
+
+    volatilities = tf.fill((dimension_x,), 0.25)
+    correlations = np.array([[1, 0.5], [0.5, 1]])
+    riskfree_rate = 0.1
+
+    name = f"european_bs_{dimension_x}d_{units}n_{layers}l_hw"
     save_path = os.path.join(args.save_path, name)
 
-    t, x, outputs = create_spacetime_dgm_network(dimension_x, units, layers)
+    learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
+    timing_cb = TimingCallback(save_path=save_path)
 
-    # tf.strategy.MirroredStrategy here
     generator = SpaceTimeGenerator(
-        dimension_x=dimension_x,
         batch_size=batch_size,
-        x_range=x_range,
+        dimension_x=dimension_x,
         t_range=t_range,
+        x_range=x_range,
+    )
+
+    t, x, outputs = create_spacetime_highway_network(
+        dimension_x=dimension_x, units=units, layers=layers
     )
 
     model = EuropeanBlackScholesPDEModel(
         dimension_x=dimension_x,
         K=K,
-        volatilities=volatilities,
         correlations=correlations,
+        volatilities=volatilities,
         riskfree_rate=riskfree_rate,
+        g_terminal=g_minimum,
         inputs=[t, x],
         outputs=outputs,
-        g_terminal=g_arithmetic,
     )
-
-    learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
-
-    timing_cb = TimingCallback(save_path=save_path)
-
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate)
     )
 
-    LOGGER.info(model.summary())
+    print(model.summary())
 
     history = model.fit(
         x=generator,
@@ -81,7 +80,6 @@ def runner(args):
         steps_per_epoch=steps_per_epoch,
         callbacks=[timing_cb],
     )
-
     save_model(model, save_path, history)
 
 

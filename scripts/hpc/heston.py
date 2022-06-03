@@ -1,31 +1,40 @@
+import os
+import logging
 import tensorflow as tf
 import numpy as np
-import logging
+from aragog.logger import configure_logger
 from aragog.generators.variance import HestonSpaceTimeVarianceGenerator
 from aragog.pde_models.heston.european import EuropeanHestonPDEModel
+from aragog.callbacks.timing import TimingCallback
 from aragog.pde_models.payoffs import g_minimum
-from aragog.networks.factories import create_variance_process_dgm_network
-from scripts.hpc.utils import save_model
-
+from aragog.networks.factories import (
+    create_variance_process_mlp,
+    # create_variance_process_dgm_network,
+    # create_variance_process_highway_network,
+)
+from aragog.schedules.piecewise import build_piecewise_decay_schedule
+from scripts.hpc.utils import save_model, parse_args
 
 LOGGER = logging.getLogger(__name__)
 
 
-def runner():
+def runner(args):
+    configure_logger()
+
     # Constants
-    units = 50
-    layers = 3
-    learning_rate = 1e-4
-    steps_per_epoch = 40
+    units = 75
+    layers = 4
+    steps_per_epoch = 20
 
     batch_size = 5000
-    epochs = 500
-    K = 100.0
-    T = 1.0
+    epochs = 1000
+
+    K = 1.0
+    T = 2.0
     dimension_x = 2
     t_range = [0 + 1e-10, T]
-    x_range = [85.0, 115.0]
-    v_range = [0 + 1e-10, 0.2]
+    x_range = [0 + 1e-10, 4.0]
+    v_range = [0 + 1e-10, 0.3]
     correlations = np.array([[1, 0.5], [0.5, 1]])
     variance_correlations = np.array([0.25, 0.25])
     riskfree_rate = 0.0
@@ -34,7 +43,11 @@ def runner():
     vol_of_vol = 0.05
     initial_variance = 0.04
 
-    save_path = "./output/heston_2d_dgm"
+    name = f"european_heston_{dimension_x}d_{units}n_{layers}l_mlp"
+    save_path = os.path.join(args.save_path, name)
+
+    learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
+    timing_cb = TimingCallback(save_path=save_path)
 
     generator = HestonSpaceTimeVarianceGenerator(
         batch_size=batch_size,
@@ -44,7 +57,7 @@ def runner():
         v_range=v_range,
     )
 
-    t, x, v, outputs = create_variance_process_dgm_network(
+    t, x, v, outputs = create_variance_process_mlp(
         dimension_x=dimension_x, units=units, layers=layers
     )
 
@@ -62,15 +75,21 @@ def runner():
         inputs=[t, x, v],
         outputs=outputs,
     )
-
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate)
     )
+
+    print(model.summary())
+
     history = model.fit(
-        x=generator, epochs=epochs, steps_per_epoch=steps_per_epoch
+        x=generator,
+        epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
+        callbacks=[timing_cb],
     )
     save_model(model, save_path, history)
 
 
 if __name__ == "__main__":
-    runner()
+    args = parse_args()
+    runner(args)

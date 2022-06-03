@@ -1,8 +1,8 @@
 import tensorflow as tf
-from aragog.pde_models.base import ParametricBlackScholesPDEModel
+from aragog.pde_models.base import PDEModel
 
 
-class ParametricEuropeanBlackScholesPDEModel(ParametricBlackScholesPDEModel):
+class ParametricEuropeanBlackScholesPDEModel(PDEModel):
     def __init__(self, batch_size: int, *args, **kwargs):
         super(ParametricEuropeanBlackScholesPDEModel, self).__init__(
             *args, **kwargs

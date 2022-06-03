@@ -7,8 +7,6 @@ from aragog.pde_models.base import PDEModel
 class HestonPDEModel(PDEModel):
     def __init__(
         self,
-        dimension_x: int,
-        K: float,
         correlations: Union[List[float], np.ndarray],
         variance_correlations: Union[List[float], np.ndarray],
         riskfree_rate: float,
@@ -20,8 +18,6 @@ class HestonPDEModel(PDEModel):
         **kwargs
     ):
         super(HestonPDEModel, self).__init__(*args, **kwargs)
-        self.K = tf.constant(K, dtype=tf.float32)
-        self.dimension_x = tf.constant(dimension_x, dtype=tf.int32)
         self.correlations = tf.reshape(
             tf.constant(correlations, dtype=tf.float32),
             [self.dimension_x, self.dimension_x],
@@ -106,3 +102,6 @@ class HestonPDEModel(PDEModel):
 
     def predict(self, t, x, v, *args, **kwargs):
         return super(HestonPDEModel, self).predict([t, x, v], *args, **kwargs)
+
+    def train_step(self, data):
+        raise NotImplementedError("This class cannot be used for training.")
