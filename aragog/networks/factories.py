@@ -122,3 +122,17 @@ def create_variance_process_mlp(
         )
     outputs = tf.keras.layers.Dense(1)(outputs)
     return t, x, v, outputs
+
+
+def create_parametric_dgm(
+    dimension_x: int, dimension_params: int, units: int = 50, layers: int = 3
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    x = tf.keras.Input(shape=(dimension_x,))
+    t = tf.keras.Input(shape=(1,))
+    params = tf.keras.Input(shape=(dimension_params,))
+
+    dgm_wrapper = DGMParametric(units=units, n_layers=layers)
+    dgm_wrapper.build(input_shape=(None, dimension_x + dimension_params + 1))
+
+    outputs = dgm_wrapper(t, x, params)
+    return t, x, params, outputs
