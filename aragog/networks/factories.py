@@ -136,3 +136,43 @@ def create_parametric_dgm(
 
     outputs = dgm_wrapper(t, x, params)
     return t, x, params, outputs
+
+
+def create_parametric_mlp(
+    dimension_x: int, dimension_params: int, units: int = 50, layers: int = 3
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    x = tf.keras.Input(shape=(dimension_x,))
+    t = tf.keras.Input(shape=(1,))
+    params = tf.keras.Input(shape=(dimension_params,))
+
+    dense_1 = DenseConcatThreeInputs(units)
+    dense_1.build(input_shape=(None, dimension_x + dimension_params + 1))
+
+    outputs = dense_1(t, x, params)
+    for i in range(layers):
+        outputs = tf.keras.layers.Dense(units=units, activation=tf.nn.tanh)(
+            outputs
+        )
+    outputs = tf.keras.layers.Dense(1)(outputs)
+    return t, x, params, outputs
+
+
+def create_parametric_highway_network(
+    dimension_x: int, dimension_params: int, units: int = 50, layers: int = 3
+) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+    x = tf.keras.Input(shape=(dimension_x,))
+    t = tf.keras.Input(shape=(1,))
+    params = tf.keras.Input(shape=(dimension_params,))
+
+    dense_1 = DenseConcatThreeInputs(units)
+    dense_1.build(input_shape=(None, dimension_x + dimension_params + 1))
+
+    outputs = dense_1(t, x, params)
+    outputs = tf.concat([t, x, params, outputs], axis=1)
+    for i in range(layers):
+        outputs = HighwayLayer(
+            units=units + dimension_x + dimension_params + 1,
+            activation_func=tf.nn.tanh,
+        )(outputs)
+    outputs = tf.keras.layers.Dense(1)(outputs)
+    return t, x, params, outputs

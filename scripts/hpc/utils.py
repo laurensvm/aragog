@@ -1,5 +1,5 @@
 import tensorflow as tf
-from typing import Any, Tuple
+from typing import Any, Tuple, List
 import argparse
 import os
 import pandas as pd
@@ -41,21 +41,22 @@ def parse_args():
 
 def load_training_datasets(
     root_path: str,
+    filenames: List[str] = ["BS_train_input.csv", "BS_train_output.csv"],
+    include_iv: bool = True,
 ) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
-    files = [
-        pd.read_csv(os.path.join(root_path, f))
-        for f in ["BS_train_input.csv", "BS_train_output.csv"]
-    ]
+    files = [pd.read_csv(os.path.join(root_path, f)) for f in filenames]
 
     X_train, y_train = tuple(files)
 
-    # Modify so that the volatility becomes the target
-    y_train_iv = X_train["sigma"]
-    X_train_iv = X_train.copy()
-    X_train_iv["price"] = y_train
-    X_train_iv.drop("sigma", axis=1, inplace=True)
+    if include_iv:
+        # Modify so that the volatility becomes the target
+        y_train_iv = X_train["sigma"]
+        X_train_iv = X_train.copy()
+        X_train_iv["price"] = y_train
+        X_train_iv.drop("sigma", axis=1, inplace=True)
 
-    return (X_train.values, y_train.values), (
-        X_train_iv.values,
-        y_train_iv.values,
-    )
+        return (X_train.values, y_train.values), (
+            X_train_iv.values,
+            y_train_iv.values,
+        )
+    return X_train.values, y_train.values

@@ -8,11 +8,11 @@ from aragog.pde_models.black_scholes.european import (
     EuropeanBlackScholesPDEModel,
 )
 from aragog.callbacks.timing import TimingCallback
-from aragog.pde_models.payoffs import g_minimum
+from aragog.pde_models.payoffs import g_arithmetic
 from aragog.networks.factories import (
-    # create_spacetime_mlp,
-    # create_spacetime_dgm_network,
-    create_spacetime_highway_network,
+    #    create_spacetime_mlp,
+    create_spacetime_dgm_network,
+    #    create_spacetime_highway_network,
 )
 from aragog.schedules.piecewise import build_piecewise_decay_schedule
 from scripts.hpc.utils import save_model, parse_args
@@ -24,7 +24,7 @@ def runner(args):
     configure_logger()
 
     # Constants
-    units = 75
+    units = 100
     layers = 4
     steps_per_epoch = 20
 
@@ -33,15 +33,17 @@ def runner(args):
 
     K = 1.0
     T = 2.0
-    dimension_x = 2
+    dimension_x = 20
     t_range = [0 + 1e-10, T]
     x_range = [0 + 1e-10, 4.0]
 
     volatilities = tf.fill((dimension_x,), 0.25)
-    correlations = np.array([[1, 0.5], [0.5, 1]])
+    # correlations = np.array([[1, 0.5], [0.5, 1]])
+    correlations = np.fill((dimension_x, dimension_x), 0.5)
+    correlations = np.fill_diagonal(correlations, 1)
     riskfree_rate = 0.1
 
-    name = f"european_bs_{dimension_x}d_{units}n_{layers}l_hw"
+    name = f"european_bs_{dimension_x}d_{units}n_{layers}l_dgm_arith"
     save_path = os.path.join(args.save_path, name)
 
     learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
@@ -54,7 +56,7 @@ def runner(args):
         x_range=x_range,
     )
 
-    t, x, outputs = create_spacetime_highway_network(
+    t, x, outputs = create_spacetime_dgm_network(
         dimension_x=dimension_x, units=units, layers=layers
     )
 
@@ -64,7 +66,7 @@ def runner(args):
         correlations=correlations,
         volatilities=volatilities,
         riskfree_rate=riskfree_rate,
-        g_terminal=g_minimum,
+        g_terminal=g_arithmetic,
         inputs=[t, x],
         outputs=outputs,
     )

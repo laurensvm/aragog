@@ -10,7 +10,11 @@ from aragog.pde_models.black_scholes.parametric_european import (
 )
 from aragog.callbacks.timing import TimingCallback
 from aragog.pde_models.payoffs import g_arithmetic
-from aragog.networks.factories import create_parametric_dgm
+from aragog.networks.factories import (
+    # create_parametric_dgm,
+    # create_parametric_highway_network,
+    create_parametric_mlp,
+)
 from aragog.schedules.piecewise import build_piecewise_decay_schedule
 from scripts.hpc.utils import save_model, parse_args
 
@@ -21,12 +25,12 @@ def runner(args):
     configure_logger()
 
     # Constants
-    units = 75
+    units = 100
     layers = 4
-    steps_per_epoch = 20
+    steps_per_epoch = 40
 
     batch_size = 5000
-    epochs = 1000
+    epochs = 5000
 
     K = 1.0
     T = 2.0
@@ -37,7 +41,7 @@ def runner(args):
     volatility_range = [0.01, 0.2]
     correlation_range = [-0.5, 0.5]
 
-    name = f"parametric_european_bs_{dimension_x}d_{units}n_{layers}l_hw"
+    name = f"par_european_bs_{dimension_x}d_{units}n_{layers}l_mlp_large"
     save_path = os.path.join(args.save_path, name)
 
     learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
@@ -53,7 +57,7 @@ def runner(args):
         correlation_range=correlation_range,
     )
 
-    t, x, params, outputs = create_parametric_dgm(
+    t, x, params, outputs = create_parametric_mlp(
         dimension_x=dimension_x,
         dimension_params=2 * dimension_x,
         units=units,

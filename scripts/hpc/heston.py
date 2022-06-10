@@ -8,9 +8,9 @@ from aragog.pde_models.heston.european import EuropeanHestonPDEModel
 from aragog.callbacks.timing import TimingCallback
 from aragog.pde_models.payoffs import g_minimum
 from aragog.networks.factories import (
-    create_variance_process_mlp,
-    # create_variance_process_dgm_network,
-    # create_variance_process_highway_network,
+    #    create_variance_process_mlp,
+    #    create_variance_process_dgm_network,
+    create_variance_process_highway_network,
 )
 from aragog.schedules.piecewise import build_piecewise_decay_schedule
 from scripts.hpc.utils import save_model, parse_args
@@ -43,7 +43,7 @@ def runner(args):
     vol_of_vol = 0.05
     initial_variance = 0.04
 
-    name = f"european_heston_{dimension_x}d_{units}n_{layers}l_mlp"
+    name = f"european_heston_{dimension_x}d_{units}n_{layers}l_hw"
     save_path = os.path.join(args.save_path, name)
 
     learning_rate = build_piecewise_decay_schedule(epochs * steps_per_epoch)
@@ -57,7 +57,7 @@ def runner(args):
         v_range=v_range,
     )
 
-    t, x, v, outputs = create_variance_process_mlp(
+    t, x, v, outputs = create_variance_process_highway_network(
         dimension_x=dimension_x, units=units, layers=layers
     )
 
