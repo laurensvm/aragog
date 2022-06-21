@@ -60,7 +60,7 @@ def train_model(
     name: str,
 ):
     model_save_path = os.path.join(
-        save_path, f"{type}_{name}_{layers}l_{nodes}n"
+        save_path, f"{type}_{name}_{layers}l_{nodes}n_equal_params"
     )
     os.makedirs(model_save_path, exist_ok=True)
 
@@ -101,7 +101,7 @@ def runner(args):
     LOGGER.warning(f"GPU: {tf.test.is_gpu_available()}")
 
     nodes = 50
-    layers = 3
+    layers = 4
 
     X_train_heston, y_train_heston = load_training_datasets(
         args.data_path,
@@ -109,15 +109,15 @@ def runner(args):
         filenames=["X_train_heston.csv", "y_train_heston.csv"],
     )
 
-    train_model(
-        nodes,
-        layers,
-        X_train_heston,
-        y_train_heston,
-        args.save_path,
-        type="heston",
-        name="generic_hw",
-    )
+    # train_model(
+    #     nodes,
+    #     layers,
+    #     X_train_heston,
+    #     y_train_heston,
+    #     args.save_path,
+    #     type="heston",
+    #     name="generic_hw",
+    # )
     train_model(
         nodes,
         layers,
@@ -127,15 +127,15 @@ def runner(args):
         type="heston",
         name="hw",
     )
-    train_model(
-        nodes,
-        layers,
-        X_train_heston,
-        y_train_heston,
-        args.save_path,
-        type="heston",
-        name="residual",
-    )
+    # train_model(
+    #     nodes,
+    #     layers,
+    #     X_train_heston,
+    #     y_train_heston,
+    #     args.save_path,
+    #     type="heston",
+    #     name="residual",
+    # )
 
 
 if __name__ == "__main__":

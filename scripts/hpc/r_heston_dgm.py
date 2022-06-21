@@ -44,7 +44,7 @@ def train_model(
     name: str,
 ):
     model_save_path = os.path.join(
-        save_path, f"{type}_{name}_{layers}l_{nodes}n"
+        save_path, f"{type}_{name}_{layers}l_{nodes}n_equal_params"
     )
     os.makedirs(model_save_path, exist_ok=True)
 
@@ -71,7 +71,7 @@ def runner(args):
     LOGGER.warning(f"GPU: {tf.test.is_gpu_available()}")
 
     nodes = 50
-    layers = 3
+    layers = 2
 
     X_train_heston, y_train_heston = load_training_datasets(
         args.data_path,

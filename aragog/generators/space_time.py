@@ -62,3 +62,11 @@ class SpaceTimeGenerator(tf.keras.utils.Sequence):
             )
             return interior + terminal + boundary
         return interior + terminal
+
+    @property
+    def output_types(self) -> List[tf.TensorSpec]:
+        return [tensor.dtype for tensor in self.__getitem__()]
+
+    @property
+    def output_shapes(self) -> List[tf.TensorShape]:
+        return [tensor.shape for tensor in self.__getitem__()]

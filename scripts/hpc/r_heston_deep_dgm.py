@@ -6,10 +6,12 @@ as a batch job on DHPC.
 
 import logging
 import tensorflow as tf
-import numpy as np
 import os
+import numpy as np
 from aragog.logger import configure_logger
 from aragog.callbacks.timing import TimingCallback
+from aragog.networks.dgm import DGM
+from aragog.networks.layers.deep_dgm import DeepDGMLayer
 from utils import load_training_datasets, save_model, parse_args
 
 
@@ -20,39 +22,40 @@ def build_model(
     input_shape: int,
     nodes: int,
     layers: int,
-    activation_func: str = "relu",
+    depth: int,
     loss: tf.keras.losses.Loss = tf.keras.losses.MeanSquaredError(),
     optimizer: tf.keras.optimizers.Optimizer = tf.keras.optimizers.Adam(
         learning_rate=1e-4
     ),
 ) -> tf.keras.Model:
-    layers = (
-        [tf.keras.layers.Input(shape=(input_shape,))]
-        + [
-            tf.keras.layers.Dense(nodes, activation=activation_func)
-            for _ in range(layers)
-        ]
-        + [tf.keras.layers.Dense(1)]
+    inputs = tf.keras.Input(shape=(input_shape,))
+    dgm_wrapper = DGM(
+        units=nodes, n_layers=layers, layer_instance=DeepDGMLayer, depth=depth
     )
-
-    model = tf.keras.models.Sequential(layers)
+    outputs = dgm_wrapper(inputs)
+    model = tf.keras.Model(inputs, outputs)
     model.compile(loss=loss, optimizer=optimizer)
-
     return model
 
 
 def train_model(
     nodes: int,
     layers: int,
+    depth: int,
     X: np.ndarray,
     y: np.ndarray,
     save_path: str,
     type: str,
+    name: str,
 ):
-    model_save_path = os.path.join(save_path, f"{type}_mlp_{layers}l_{nodes}n")
+    model_save_path = os.path.join(
+        save_path, f"{type}_{name}_{layers}l_{nodes}n"
+    )
     os.makedirs(model_save_path, exist_ok=True)
 
-    model = build_model(input_shape=X.shape[1], layers=layers, nodes=nodes)
+    model = build_model(
+        input_shape=X.shape[1], layers=layers, nodes=nodes, depth=depth
+    )
     LOGGER.info(model.summary())
 
     timing_cb = TimingCallback(save_path=model_save_path)
@@ -74,8 +77,9 @@ def runner(args):
 
     LOGGER.warning(f"GPU: {tf.test.is_gpu_available()}")
 
-    nodes = [50, 100, 150, 200, 250, 500]
-    layers = [2, 3]
+    nodes = 50
+    layers = 3
+    depth = 3
 
     X_train_heston, y_train_heston = load_training_datasets(
         args.data_path,
@@ -83,16 +87,16 @@ def runner(args):
         filenames=["X_train_heston.csv", "y_train_heston.csv"],
     )
 
-    for node in nodes:
-        for layer in layers:
-            train_model(
-                node,
-                layer,
-                X_train_heston,
-                y_train_heston,
-                args.save_path,
-                type="heston",
-            )
+    train_model(
+        nodes,
+        layers,
+        depth,
+        X_train_heston,
+        y_train_heston,
+        args.save_path,
+        type="heston",
+        name="deep_dgm",
+    )
 
 
 if __name__ == "__main__":
